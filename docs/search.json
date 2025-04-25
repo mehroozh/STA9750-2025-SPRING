@@ -1,0 +1,16 @@
+[
+  {
+    "objectID": "mp03.html",
+    "href": "mp03.html",
+    "title": "mp03.qmd",
+    "section": "",
+    "text": "{r} library(httr) library(jsonlite) library(readr) library(dplyr) library(stringr) library(purrr) library(tibble)"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Mehrooz’s Project Site",
+    "section": "",
+    "text": "Last Updated: Friday 04 25, 2025 at 16:21PM"
+  }
+]

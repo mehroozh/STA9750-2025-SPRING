@@ -1,0 +1,124 @@
+---
+title: "mp03.qmd"
+format: html
+editor: visual
+---
+
+{r} library(httr) library(jsonlite) library(readr) library(dplyr) library(stringr) library(purrr) library(tibble)
+
+# --- Config ---
+
+load_songs \<- function() { url \<- "https://raw.githubusercontent.com/gabminamedez/spotify-data/refs/heads/master/data.csv" data_dir \<- "data/mp03" dir.create(data_dir, showWarnings = FALSE, recursive = TRUE)
+
+message("Downloading from ", url, "...") response \<- GET(url)
+
+if (status_code(response) == 200) { message("Download successful.") csv_path \<- file.path(data_dir, basename(url)) writeBin(content(response, "raw"), csv_path) df_songs \<- read_csv(csv_path, show_col_types = FALSE) message("Data loaded into DataFrame.") return(df_songs) } else { stop("Failed to download file: Status code ", status_code(response)) } }
+
+load_playlists \<- function() { repo_owner \<- "DevinOgrady" repo_name \<- "spotify_million_playlist_dataset" folder_path \<- "data1" download_dir \<- "downloaded_data" dir.create(download_dir, showWarnings = FALSE, recursive = TRUE)
+
+api_url \<- paste0("https://api.github.com/repos/", repo_owner, "/", repo_name, "/contents/", folder_path) response \<- GET(api_url)
+
+if (status_code(response) != 200) { stop("Failed to fetch file list: ", status_code(response)) }
+
+file_data \<- content(response, as = "parsed", simplifyVector = TRUE) file_names \<- file_data$name[str_ends(file_data$name, ".json")\]
+
+base_raw_url \<- paste0("https://raw.githubusercontent.com/", repo_owner, "/", repo_name, "/main/", folder_path, "/")
+
+all_playlists \<- list() data_rows \<- list()
+
+for (file_name in file_names) { message("Processing ", file_name) local_path \<- file.path(download_dir, file_name) file_url \<- paste0(base_raw_url, file_name)
+
+```         
+if (!file.exists(local_path)) {
+  res <- GET(file_url)
+  if (status_code(res) == 200) {
+    writeBin(content(res, "raw"), local_path)
+  } else {
+    warning("Failed to download ", file_name)
+    next
+  }
+}
+
+json_data <- fromJSON(local_path)
+playlists <- json_data$playlists
+all_playlists <- c(all_playlists, playlists)
+
+for (pl in playlists) {
+  pid <- pl$pid
+  pname <- pl$name
+  followers <- pl$num_followers
+  if (is.null(followers)) followers <- NA
+ 
+  track_info <- pl$tracks
+  if (length(track_info) > 0) {
+    rows <- tibble(
+      playlist_id = pid,
+      playlist_name = pname,
+      playlist_followers = followers,
+      playlist_position = map_int(track_info, "pos"),
+      artist_name = map_chr(track_info, "artist_name"),
+      artist_id = map_chr(track_info, "artist_uri"),
+      track_name = map_chr(track_info, "track_name"),
+      track_id = map_chr(track_info, "track_uri"),
+      album_name = map_chr(track_info, "album_name"),
+      album_id = map_chr(track_info, "album_uri"),
+      duration = map_int(track_info, "duration_ms")
+    )
+    data_rows <- append(data_rows, list(rows))
+  }
+}
+```
+
+}
+
+df_playlists \<- bind_rows(data_rows)
+
+\# Strip spotify:xxx: prefix for (col in c("playlist_id", "artist_id", "track_id", "album_id")) { if (col %in% colnames(df_playlists)) { df_playlists\[\[col\]\] \<- str_replace(df_playlists\[\[col\]\], "\^spotify:\\w+:", "") } }
+
+return(df_playlists) }
+
+# Load data
+
+df_songs \<- load_songs() df_playlists \<- load_playlists()
+
+# Q1. Unique tracks and artists
+
+num_unique_tracks \<- n_distinct(df_playlists$track_id)
+num_unique_artists <- n_distinct(df_playlists$artist_id) cat("1. Distinct tracks:", num_unique_tracks, "Distinct artists:", num_unique_artists, "\n")
+
+# Q2. Top 5 most frequent tracks
+
+top_5_tracks \<- df_playlists %\>% count(track_name, sort = TRUE) %\>% slice_head(n = 5) cat("\n2. Top 5 most popular tracks:\n") print(top_5_tracks)
+
+# Q3. Most popular track missing from song data
+
+merged \<- df_playlists %\>% left_join(df_songs %\>% select(track_id), by = "track_id", suffix = c("", "\_songs")) %\>% filter(is.na(track_id_songs))
+
+most_missing \<- merged %\>% count(track_id, sort = TRUE) %\>% slice_head(n = 1)
+
+track_name_missing \<- df_playlists %\>% filter(track_id == most_missing$track_id[1]) %>%
+  pull(track_name) %>%
+  unique()
+cat("\n3. Most popular track missing from song data:", track_name_missing, "(ID:", most_missing$track_id\[1\], ")\n")
+
+# Q4. Most danceable track
+
+most_danceable \<- df_songs %\>% arrange(desc(danceability)) %\>% slice(1) cat("\n4. Most danceable track:", most_danceable\$name, "\n")
+
+# Q5. Playlist with longest avg track duration
+
+longest_avg \<- df_playlists %\>% group_by(playlist_id, playlist_name) %\>% summarise(avg_duration = mean(duration, na.rm = TRUE), .groups = "drop") %\>% arrange(desc(avg_duration)) %\>% slice(1) cat("\n5. Playlist with longest avg. track duration:", longest_avg$playlist_name,
+    "(ID:", longest_avg$playlist_id, ") →", round(longest_avg\$avg_duration / 60000, 2), "minutes\n")
+
+# Q6. Most followed playlist
+
+most_popular \<- df_playlists %\>% filter(!is.na(playlist_followers)) %\>% distinct(playlist_id, playlist_name, playlist_followers) %\>% arrange(desc(playlist_followers)) %\>% slice(1) cat("\n6. Most followed playlist:", most_popular$playlist_name,
+    "(ID:", most_popular$playlist_id, ") →", most_popular\$playlist_followers, "followers\n")
+
+# BONUS: Ultimate playlist - top 12 by popularity
+
+ultimate_playlist \<- df_songs %\>% arrange(desc(popularity)) %\>% slice_head(n = 12) %\>% mutate(formatted = paste(name, "by", artist_name))
+
+cat("\n Ultimate Playlist (Top 12 Songs):\n") print(ultimate_playlistformatted) ---
+
+## 

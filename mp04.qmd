@@ -1,0 +1,247 @@
+---
+title: "mp04.qmd"
+format: html
+editor: visual
+---
+
+{r}
+
+# Load 
+
+# Load necessary libraries
+
+library(httr) library(zip) library(sf) \#
+
+Task 1 \# URL of the shapefile zip archive url \<- "[https://www2.census.gov/geo/tiger/GENZ2023/shp/cb_2023_us_20m.zip"](https://www2.census.gov/geo/tiger/GENZ2023/shp/cb_2023_us_20m.zip")
+
+# Temporary directory to store the downloaded file
+
+temp_dir \<- "temp_shapefile" dir.create(temp_dir, showWarnings = FALSE)
+
+# Download the shapefile zip archive
+
+response \<- GET(url) temp_file \<- tempfile(fileext = ".zip") writeBin(content(response, "raw"), temp_file)
+
+# Unzip the downloaded file
+
+unzip(temp_file, exdir = temp_dir)
+
+# Load the shapefile into a GeoDataFrame
+
+shapefile_path \<- file.path(temp_dir, "cb_2023_us_20m.shp") gdf \<- st_read(shapefile_path)
+
+# Convert to a data frame (excluding the geometry column)
+
+df \<- st_drop_geometry(gdf)
+
+# Display the first few rows
+
+head(df)
+
+# Clean up by removing the temporary directory
+
+unlink(temp_dir, recursive = TRUE) \# Task 2 \# Load necessary libraries library(rvest) library(dplyr) library(stringr)
+
+# List of Wikipedia URLs for each state's county-level election results
+
+state_urls \<- c( 'Alabama': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Alabama',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Alabama',) 'Alaska': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Alaska',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Alaska',) 'Arizona': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Arizona',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Arizona',) 'Arkansas': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Arkansas',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Arkansas',) 'California': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_California',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_California',) 'Colorado': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Colorado',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Colorado',) 'Connecticut': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Connecticut',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Connecticut',) 'Delaware': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Delaware',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Delaware',) 'Florida': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Florida',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Florida',) 'Georgia': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Georgia',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Georgia',) 'Hawaii': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Hawaii',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Hawaii',) 'Idaho': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Idaho',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Idaho',) 'Illinois': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Illinois',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Illinois',) 'Indiana': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Indiana',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Indiana',) 'Iowa': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Iowa',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Iowa',) 'Kansas': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Kansas',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Kansas',) 'Kentucky': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Kentucky',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Kentucky',) 'Louisiana': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Louisiana',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Louisiana',) 'Maine': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Maine',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Maine',) 'Maryland': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Maryland',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Maryland',) 'Massachusetts': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Massachusetts',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Massachusetts',) 'Michigan': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Michigan',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Michigan',) 'Minnesota': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Minnesota',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Minnesota',) 'Mississippi': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Mississippi',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Mississippi',) 'Missouri': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Missouri',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Missouri',) 'Montana': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Montana',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Montana',) 'Nebraska': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Nebraska',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Nebraska',) 'Nevada': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Nevada',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Nevada',) 'New_Hampshire': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Hampshire',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Hampshire',) 'New_Jersey': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Jersey',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Jersey',) 'New_Mexico': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Mexico',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Mexico',) 'New_York': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_York',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_York',) 'North_Carolina': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_North_Carolina',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_North_Carolina',) 'North_Dakota': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_North_Dakota',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_North_Dakota',) 'Ohio': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Ohio',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Ohio',) 'Oklahoma': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Oklahoma',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Oklahoma',) 'Oregon': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Oregon',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Oregon',) 'Pennsylvania': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Pennsylvania',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Pennsylvania',) 'Rhode_Island': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Rhode_Island',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Rhode_Island',) 'South_Carolina': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_South_Carolina',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_South_Carolina',) 'South_Dakota': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_South_Dakota',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_South_Dakota',) 'Tennessee': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Tennessee',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Tennessee',) 'Texas': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Texas',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Texas',) 'Utah': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Utah',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Utah',) 'Vermont': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Vermont',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Vermont',) 'Virginia': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Virginia',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Virginia',) 'Washington': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Washington',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Washington',) 'West_Virginia': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_West_Virginia',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_West_Virginia',) 'Wisconsin': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Wisconsin',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Wisconsin',) 'Wyoming': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Wyoming'](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Wyoming') )
+
+# Function to scrape county-level election results
+
+scrape_county_results \<- function(url) { page \<- read_html(url)
+
+\# Find the table containing county-level results table \<- html_nodes(page, "table.wikitable")
+
+if(length(table) == 0) return(data.frame()) \# Return empty data frame if no table
+
+\# Parse the table into a data frame df \<- html_table(table)\[\[1\]\]
+
+\# Clean up the data frame colnames(df) \<- gsub("County", "County Name", colnames(df)) \# Rename columns for consistency state \<- str_extract(url, "(?\<=in\_)\[A-Za-z\]+$")  # Extract state abbreviation from URL
+  df$State \<- state
+
+return(df) }
+
+# Scrape results for all states and combine into a single DataFrame
+
+all_results \<- lapply(state_urls, scrape_county_results)
+
+# Combine all state DataFrames into one
+
+election_data \<- bind_rows(all_results)
+
+# Display the first few rows of the combined data frame
+
+head(election_data)
+
+library(rvest) library(dplyr) library(sf) library(ggplot2)
+
+# Function to scrape county-level election results
+
+scrape_county_results \<- function(url) { page \<- read_html(url)
+
+\# Find the table containing county-level results table \<- html_nodes(page, 'table.wikitable') if (length(table) == 0) { return(data.frame()) \# Return empty dataframe if no table found }
+
+\# Parse the table into a data frame df \<- html_table(table\[\[1\]\], fill = TRUE)
+
+\# Clean up the DataFrame colnames(df) \<- gsub("\\s+", " ", colnames(df)) \# Clean column names df$County.Name <- gsub(" County", "", df$County.Name) \# Remove "County" from county names
+
+\# Add state from URL state \<- sub(".\*\_(\\w+)\\.html", "\\1", url) df\$State \<- state
+
+return(df) } \# Task 3 \# List of Wikipedia URLs for each state's county-level election results state_urls \<- list( 'Alabama': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Alabama',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Alabama',) 'Alaska': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Alaska',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Alaska',) 'Arizona': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Arizona',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Arizona',) 'Arkansas': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Arkansas',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Arkansas',) 'California': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_California',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_California',) 'Colorado': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Colorado',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Colorado',) 'Connecticut': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Connecticut',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Connecticut',) 'Delaware': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Delaware',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Delaware',) 'Florida': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Florida',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Florida',) 'Georgia': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Georgia',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Georgia',) 'Hawaii': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Hawaii',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Hawaii',) 'Idaho': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Idaho',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Idaho',) 'Illinois': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Illinois',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Illinois',) 'Indiana': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Indiana',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Indiana',) 'Iowa': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Iowa',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Iowa',) 'Kansas': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Kansas',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Kansas',) 'Kentucky': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Kentucky',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Kentucky',) 'Louisiana': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Louisiana',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Louisiana',) 'Maine': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Maine',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Maine',) 'Maryland': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Maryland',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Maryland',) 'Massachusetts': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Massachusetts',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Massachusetts',) 'Michigan': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Michigan',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Michigan',) 'Minnesota': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Minnesota',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Minnesota',) 'Mississippi': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Mississippi',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Mississippi',) 'Missouri': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Missouri',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Missouri',) 'Montana': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Montana',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Montana',) 'Nebraska': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Nebraska',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Nebraska',) 'Nevada': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Nevada',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Nevada',) 'New_Hampshire': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Hampshire',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Hampshire',) 'New_Jersey': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Jersey',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Jersey',) 'New_Mexico': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Mexico',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Mexico',) 'New_York': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_York',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_York',) 'North_Carolina': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_North_Carolina',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_North_Carolina',) 'North_Dakota': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_North_Dakota',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_North_Dakota',) 'Ohio': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Ohio',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Ohio',) 'Oklahoma': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Oklahoma',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Oklahoma',) 'Oregon': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Oregon',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Oregon',) 'Pennsylvania': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Pennsylvania',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Pennsylvania',) 'Rhode_Island': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Rhode_Island',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Rhode_Island',) 'South_Carolina': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_South_Carolina',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_South_Carolina',) 'South_Dakota': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_South_Dakota',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_South_Dakota',) 'Tennessee': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Tennessee',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Tennessee',) 'Texas': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Texas',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Texas',) 'Utah': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Utah',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Utah',) 'Vermont': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Vermont',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Vermont',) 'Virginia': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Virginia',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Virginia',) 'Washington': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Washington',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Washington',) 'West_Virginia': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_West_Virginia',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_West_Virginia',) 'Wisconsin': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Wisconsin',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Wisconsin',) 'Wyoming': '<https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in> )
+
+# Scrape results for all states and combine into a single data frame
+
+all_results \<- lapply(names(state_urls), function(state) { url \<- state_urls\[\[state\]\] print(paste("Scraping", state, "...")) state_results \<- scrape_county_results(url) if (nrow(state_results) \> 0) { return(state_results) } return(NULL) })
+
+# Combine all the results into one data frame
+
+election_data2020 \<- bind_rows(all_results)
+
+# Preprocess the election data
+
+preprocess_election_data \<- function(df, year) { df \<- df %\>% mutate(County.Name = trimws(County.Name), State = trimws(State), Trump = as.numeric(Trump), Biden = as.numeric(Biden), Total.Votes = Trump + Biden, Year = year) return(df) }
+
+election_data2020 \<- preprocess_election_data(election_data2020, 2020) \# Task 4 \# Q1: Most Trump votes in 2024 most_trump_2024 \<- election_data2020 %\>% filter(Trump == max(Trump))
+
+# Q2: Highest Biden vote fraction in 2020
+
+election_data2020 \<- election_data2020 %\>% mutate(Biden.Fraction = Biden / Total.Votes)
+
+highest_biden_fraction_2020 \<- election_data2020 %\>% filter(Biden.Fraction == max(Biden.Fraction))
+
+# Q3: Largest shift toward Trump (needs to be computed similarly for 2024 data)
+
+# (assuming the data for 2024 has been scraped in a similar manner)
+
+# Q4: State with smallest Trump shift (assuming data is available for both years)
+
+# Task 5: Geospatial Analysis
+
+# Load shapefile for county geometries (example shapefile loading)
+
+shapefile_path \<- "path_to_shapefile.shp" counties_sf \<- st_read(shapefile_path) \# Task 5 \# Merge election data with geometry map_df \<- merge(counties_sf, election_data2020, by = c("County.Name", "State"))
+
+# Step 1: Compute % rightward shift (Trump share)
+
+merged \<- merge(election_data2020, election_data2024, by = c("County.Name", "State")) merged \<- merged %\>% mutate(Total_2020 = Trump_2020 + Biden_2020, Total_2024 = Trump_2024 + Biden_2024, Trump_share_2020 = Trump_2020 / Total_2020, Trump_share_2024 = Trump_2024 / Total_2024, rightward_shift_pct = Trump_share_2024 - Trump_share_2020) \# Task 6 \# Plot the map with arrows for rightward shift ggplot(map_df) + geom_sf(aes(fill = rightward_shift_pct)) + scale_fill_viridis_c() + geom_text(aes(label = County.Name), size = 2, color = "black") + theme_minimal() + ggtitle("County-Level Rightward Shift from 2020 to 2024") + theme(legend.position = "bottom")
+
+## 
+
+# necessary libraries
+
+library(httr) library(zip) library(sf) \# Task 1 \# URL of the shapefile zip archive url \<- "[https://www2.census.gov/geo/tiger/GENZ2023/shp/cb_2023_us_20m.zip"](https://www2.census.gov/geo/tiger/GENZ2023/shp/cb_2023_us_20m.zip")
+
+# Temporary directory to store the downloaded file
+
+temp_dir \<- "temp_shapefile" dir.create(temp_dir, showWarnings = FALSE)
+
+# Download the shapefile zip archive
+
+response \<- GET(url) temp_file \<- tempfile(fileext = ".zip") writeBin(content(response, "raw"), temp_file)
+
+# Unzip the downloaded file
+
+unzip(temp_file, exdir = temp_dir)
+
+# Load the shapefile into a GeoDataFrame
+
+shapefile_path \<- file.path(temp_dir, "cb_2023_us_20m.shp") gdf \<- st_read(shapefile_path)
+
+# Convert to a data frame (excluding the geometry column)
+
+df \<- st_drop_geometry(gdf)
+
+# Display the first few rows
+
+head(df)
+
+# Clean up by removing the temporary directory
+
+unlink(temp_dir, recursive = TRUE) \# Task 2 \# Load necessary libraries library(rvest) library(dplyr) library(stringr)
+
+# List of Wikipedia URLs for each state's county-level election results
+
+state_urls \<- c( 'Alabama': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Alabama',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Alabama',) 'Alaska': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Alaska',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Alaska',) 'Arizona': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Arizona',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Arizona',) 'Arkansas': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Arkansas',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Arkansas',) 'California': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_California',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_California',) 'Colorado': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Colorado',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Colorado',) 'Connecticut': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Connecticut',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Connecticut',) 'Delaware': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Delaware',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Delaware',) 'Florida': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Florida',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Florida',) 'Georgia': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Georgia',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Georgia',) 'Hawaii': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Hawaii',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Hawaii',) 'Idaho': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Idaho',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Idaho',) 'Illinois': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Illinois',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Illinois',) 'Indiana': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Indiana',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Indiana',) 'Iowa': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Iowa',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Iowa',) 'Kansas': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Kansas',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Kansas',) 'Kentucky': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Kentucky',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Kentucky',) 'Louisiana': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Louisiana',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Louisiana',) 'Maine': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Maine',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Maine',) 'Maryland': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Maryland',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Maryland',) 'Massachusetts': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Massachusetts',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Massachusetts',) 'Michigan': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Michigan',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Michigan',) 'Minnesota': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Minnesota',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Minnesota',) 'Mississippi': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Mississippi',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Mississippi',) 'Missouri': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Missouri',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Missouri',) 'Montana': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Montana',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Montana',) 'Nebraska': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Nebraska',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Nebraska',) 'Nevada': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Nevada',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Nevada',) 'New_Hampshire': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Hampshire',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Hampshire',) 'New_Jersey': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Jersey',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Jersey',) 'New_Mexico': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Mexico',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_Mexico',) 'New_York': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_York',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_New_York',) 'North_Carolina': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_North_Carolina',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_North_Carolina',) 'North_Dakota': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_North_Dakota',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_North_Dakota',) 'Ohio': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Ohio',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Ohio',) 'Oklahoma': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Oklahoma',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Oklahoma',) 'Oregon': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Oregon',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Oregon',) 'Pennsylvania': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Pennsylvania',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Pennsylvania',) 'Rhode_Island': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Rhode_Island',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Rhode_Island',) 'South_Carolina': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_South_Carolina',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_South_Carolina',) 'South_Dakota': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_South_Dakota',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_South_Dakota',) 'Tennessee': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Tennessee',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Tennessee',) 'Texas': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Texas',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Texas',) 'Utah': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Utah',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Utah',) 'Vermont': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Vermont',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Vermont',) 'Virginia': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Virginia',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Virginia',) 'Washington': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Washington',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Washington',) 'West_Virginia': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_West_Virginia',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_West_Virginia',) 'Wisconsin': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Wisconsin',](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Wisconsin',) 'Wyoming': '[https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Wyoming'](https://en.wikipedia.org/wiki/2024_United_States_presidential_election_in_Wyoming') )
+
+# Function to scrape county-level election results
+
+scrape_county_results \<- function(url) { page \<- read_html(url)
+
+\# Find the table containing county-level results table \<- html_nodes(page, "table.wikitable")
+
+if(length(table) == 0) return(data.frame()) \# Return empty data frame if no table
+
+\# Parse the table into a data frame df \<- html_table(table)\[\[1\]\]
+
+\# Clean up the data frame colnames(df) \<- gsub("County", "County Name", colnames(df)) \# Rename columns for consistency state \<- str_extract(url, "(?\<=in\_)\[A-Za-z\]+$")  # Extract state abbreviation from URL
+  df$State \<- state
+
+return(df) }
+
+# Scrape results for all states and combine into a single DataFrame
+
+all_results \<- lapply(state_urls, scrape_county_results)
+
+# Combine all state DataFrames into one
+
+election_data \<- bind_rows(all_results)
+
+# Display the first few rows of the combined data frame
+
+head(election_data)
+
+library(rvest) library(dplyr) library(sf) library(ggplot2)
+
+# Function to scrape county-level election results
+
+scrape_county_results \<- function(url) { page \<- read_html(url)
+
+\# Find the table containing county-level results table \<- html_nodes(page, 'table.wikitable') if (length(table) == 0) { return(data.frame()) \# Return empty dataframe if no table found }
+
+\# Parse the table into a data frame df \<- html_table(table\[\[1\]\], fill = TRUE)
+
+\# Clean up the DataFrame colnames(df) \<- gsub("\\s+", " ", colnames(df)) \# Clean column names df$County.Name <- gsub(" County", "", df$County.Name) \# Remove "County" from county names
+
+\# Add state from URL state \<- sub(".\*\_(\\w+)\\.html", "\\1", url) df\$State \<- state
+
+return(df) } \# Task 3 \# List of Wikipedia URLs for each state's county-level election results state_urls \<- list( 'Alabama': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Alabama',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Alabama',) 'Alaska': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Alaska',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Alaska',) 'Arizona': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Arizona',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Arizona',) 'Arkansas': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Arkansas',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Arkansas',) 'California': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_California',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_California',) 'Colorado': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Colorado',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Colorado',) 'Connecticut': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Connecticut',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Connecticut',) 'Delaware': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Delaware',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Delaware',) 'Florida': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Florida',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Florida',) 'Georgia': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Georgia',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Georgia',) 'Hawaii': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Hawaii',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Hawaii',) 'Idaho': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Idaho',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Idaho',) 'Illinois': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Illinois',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Illinois',) 'Indiana': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Indiana',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Indiana',) 'Iowa': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Iowa',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Iowa',) 'Kansas': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Kansas',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Kansas',) 'Kentucky': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Kentucky',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Kentucky',) 'Louisiana': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Louisiana',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Louisiana',) 'Maine': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Maine',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Maine',) 'Maryland': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Maryland',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Maryland',) 'Massachusetts': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Massachusetts',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Massachusetts',) 'Michigan': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Michigan',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Michigan',) 'Minnesota': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Minnesota',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Minnesota',) 'Mississippi': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Mississippi',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Mississippi',) 'Missouri': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Missouri',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Missouri',) 'Montana': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Montana',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Montana',) 'Nebraska': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Nebraska',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Nebraska',) 'Nevada': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Nevada',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Nevada',) 'New_Hampshire': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Hampshire',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Hampshire',) 'New_Jersey': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Jersey',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Jersey',) 'New_Mexico': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Mexico',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_Mexico',) 'New_York': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_York',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_New_York',) 'North_Carolina': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_North_Carolina',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_North_Carolina',) 'North_Dakota': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_North_Dakota',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_North_Dakota',) 'Ohio': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Ohio',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Ohio',) 'Oklahoma': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Oklahoma',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Oklahoma',) 'Oregon': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Oregon',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Oregon',) 'Pennsylvania': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Pennsylvania',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Pennsylvania',) 'Rhode_Island': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Rhode_Island',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Rhode_Island',) 'South_Carolina': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_South_Carolina',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_South_Carolina',) 'South_Dakota': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_South_Dakota',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_South_Dakota',) 'Tennessee': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Tennessee',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Tennessee',) 'Texas': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Texas',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Texas',) 'Utah': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Utah',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Utah',) 'Vermont': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Vermont',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Vermont',) 'Virginia': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Virginia',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Virginia',) 'Washington': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Washington',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Washington',) 'West_Virginia': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_West_Virginia',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_West_Virginia',) 'Wisconsin': '[https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Wisconsin',](https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in_Wisconsin',) 'Wyoming': '<https://en.wikipedia.org/wiki/2020_United_States_presidential_election_in> )
+
+# Scrape results for all states and combine into a single data frame
+
+all_results \<- lapply(names(state_urls), function(state) { url \<- state_urls\[\[state\]\] print(paste("Scraping", state, "...")) state_results \<- scrape_county_results(url) if (nrow(state_results) \> 0) { return(state_results) } return(NULL) })
+
+# Combine all the results into one data frame
+
+election_data2020 \<- bind_rows(all_results)
+
+# Preprocess the election data
+
+preprocess_election_data \<- function(df, year) { df \<- df %\>% mutate(County.Name = trimws(County.Name), State = trimws(State), Trump = as.numeric(Trump), Biden = as.numeric(Biden), Total.Votes = Trump + Biden, Year = year) return(df) }
+
+election_data2020 \<- preprocess_election_data(election_data2020, 2020) \# Task 4 \# Q1: Most Trump votes in 2024 most_trump_2024 \<- election_data2020 %\>% filter(Trump == max(Trump))
+
+# Q2: Highest Biden vote fraction in 2020
+
+election_data2020 \<- election_data2020 %\>% mutate(Biden.Fraction = Biden / Total.Votes)
+
+highest_biden_fraction_2020 \<- election_data2020 %\>% filter(Biden.Fraction == max(Biden.Fraction))
+
+# Q3: Largest shift toward Trump (needs to be computed similarly for 2024 data)
+
+# (assuming the data for 2024 has been scraped in a similar manner)
+
+# Q4: State with smallest Trump shift (assuming data is available for both years)
+
+# Task 5: Geospatial Analysis
+
+# Load shapefile for county geometries (example shapefile loading)
+
+shapefile_path \<- "path_to_shapefile.shp" counties_sf \<- st_read(shapefile_path) \# Task 5 \# Merge election data with geometry map_df \<- merge(counties_sf, election_data2020, by = c("County.Name", "State"))
+
+# Step 1: Compute % rightward shift (Trump share)
+
+merged \<- merge(election_data2020, election_data2024, by = c("County.Name", "State")) merged \<- merged %\>% mutate(Total_2020 = Trump_2020 + Biden_2020, Total_2024 = Trump_2024 + Biden_2024, Trump_share_2020 = Trump_2020 / Total_2020, Trump_share_2024 = Trump_2024 / Total_2024, rightward_shift_pct = Trump_share_2024 - Trump_share_2020) \# Task 6 \# Plot the map with arrows for rightward shift ggplot(map_df) + geom_sf(aes(fill = rightward_shift_pct)) + scale_fill_viridis_c() + geom_text(aes(label = County.Name), size = 2, color = "black") + theme_minimal() + ggtitle("County-Level Rightward Shift from 2020 to 2024") + theme(legend.position = "bottom")
+
+\##
+
+## 
